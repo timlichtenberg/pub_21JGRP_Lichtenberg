@@ -1,0 +1,6 @@
+# Stolper & Holloway 1988, Tab 1
+# P (bar), CO2 (ppm wt)
+100, 27
+500, 201
+1010, 443
+1531, 549

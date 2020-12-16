@@ -67,7 +67,7 @@ sns.despine()
 
 dirs =  {
            "output":   os.getcwd()+"/../figures/", 
-           "dat_dir":  os.getcwd()+"/../data/", 
+           "dat_dir":  os.getcwd()+"/../data/int_atm/", 
            "rad_conv": "/Users/tim/bitbucket/pcd_couple-interior-atmosphere/atm_rad_conv"
         }
 
