@@ -72,7 +72,7 @@ vol_latex = {
     "NH3"   : r"NH$_3$"
 }
 
-data_dir = "../data/solubilities/"
+data_dir = "../data/fig2_solubilities/"
 
 # Define fitting functions
 def henrys_law_linear(p_x, alpha):

@@ -131,3 +131,25 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+scripts/currentsw.dflx
+scripts/currentsw.hrts
+scripts/currentsw.nflx
+scripts/currentsw.sflx
+scripts/currentsw.uflx
+scripts/currentsw.vflx
+scripts/profile.ch4
+scripts/profile.co
+scripts/profile.co2
+scripts/profile.h2
+scripts/profile.n2
+scripts/profile.o2
+scripts/profile.p
+scripts/profile.pstar
+scripts/profile.q
+scripts/profile.stoa
+scripts/profile.surf
+scripts/profile.szen
+scripts/profile.t
+scripts/profile.tl
+scripts/profile.tstar
+scripts/radiation_code.lock
