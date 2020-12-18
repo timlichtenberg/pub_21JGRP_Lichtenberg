@@ -7,6 +7,7 @@ import SocRadModel
 from atmosphere_column import atmos
 import pandas as pd
 from scipy import interpolate
+from numpy import loadtxt
 # import seaborn as sns
 import copy
 import SocRadConv
@@ -46,7 +47,7 @@ def literature_comparison():
 
     Goldblatt13_Ts  = []
     Goldblatt13_OLR = []
-    with open("../data/OLR_benchmarks/Goldblatt13_data.txt", 'r') as data_file:
+    with open("../data/fig4_radiation_limits/Goldblatt13_data.txt", 'r') as data_file:
         for line in data_file:
             if not line.startswith('#'):
                 line = line.rstrip('\n')
@@ -55,7 +56,7 @@ def literature_comparison():
                 Goldblatt13_OLR.append(float(line[1]))
     Kopparapu13_Ts  = []
     Kopparapu13_OLR = []
-    with open("../data/OLR_benchmarks/Kopparapu13_data.txt", 'r') as data_file:
+    with open("../data/fig4_radiation_limits/Kopparapu13_data.txt", 'r') as data_file:
         for line in data_file:
             if not line.startswith('#'):
                 line = line.rstrip('\n')
@@ -64,7 +65,7 @@ def literature_comparison():
                 Kopparapu13_OLR.append(float(line[1]))
     Hamano15_Ts  = []
     Hamano15_OLR = []
-    with open("../data/OLR_benchmarks/Hamano15_data.txt", 'r') as data_file:
+    with open("../data/fig4_radiation_limits/Hamano15_data.txt", 'r') as data_file:
         for line in data_file:
             if not line.startswith('#'):
                 line = line.rstrip('\n')
@@ -78,7 +79,7 @@ def literature_comparison():
     # ax1.plot(Kopparapu13_Ts, Kopparapu13_OLR, color=ga.vol_colors["qgray"], ls="-.", lw=1.0, zorder=0.1)
     ax1.plot(Hamano15_Ts, Hamano15_OLR, color=ga.vol_colors["qgray"], ls="-.", lw=1.0, zorder=0.1)
     # ax1.text(2180, 330, "Hamano+ 15", va="top", ha="left", fontsize=7, color=ga.vol_colors["qgray"], bbox=dict(fc='white', ec="white", alpha=0.5, pad=0.05, boxstyle='round'))
-    ax1.text(2180, 350, "Kopparapu+ 13 / Hamano+ 15", va="top", ha="left", fontsize=7, color=ga.vol_colors["qgray"], bbox=dict(fc='white', ec="white", alpha=0.5, pad=0.05, boxstyle='round'))
+    ax1.text(2180, 350, "Kopparapu et al.(2013)\nHamano et al. (2015)", va="top", ha="left", fontsize=7, color=ga.vol_colors["qgray"], bbox=dict(fc='white', ec="white", alpha=0.5, pad=0.05, boxstyle='round'))
     # ax1.text(1500, 330, "Kopparapu+ 13", va="top", ha="left", fontsize=7, color=ga.vol_colors["qgray"], bbox=dict(fc='white', ec="white", alpha=0.5, pad=0.05, boxstyle='round'))
 
 def define_mixing_ratios(vol, vol_list):
@@ -186,7 +187,7 @@ col_idx = 5
 #   Single species: "H2O", "CO2", "H2", "CH4", "N2", "CO", "O2"
 #   Mixtures: "H2O-CO2", "H2-CO", "H2-CH4", "H2O-H2", "H2-N2", "CO2-N2"
 # vol_array = [ "H2O", "CO2", "H2", "CH4", "N2", "CO", "O2" ]
-vol_array = [ "H2O", "CO2" ]
+vol_array = [ "H2O", "CO2", "H2", "CH4", "N2", "CO", "O2" ]
 
 ##### PLOT A
 # print("############# PLOT A #############")
@@ -196,7 +197,7 @@ vol_array = [ "H2O", "CO2" ]
 #       "trpp"  : With tropopause/stratosphere included
 #       "moist" : Pure moist adiabat structure 
 #       "tstep" : With timestepping
-for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
+for setting in [ "trpp" ]: # "trpp", "moist", "tstep"
 
     print("----------->>>>> Setting: ", setting)
 
@@ -246,61 +247,92 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
                     # Loop through star ages
                     for tstar_idx, tstar in enumerate(star_age_range):
 
+                        data_file_name = '../data/fig4_radiation_limits/TF_'+str(vol)+"_p"+str(round(P_surf/1e+5))+"_a"+str(dist)+".txt"
+
                         time["star"] = tstar
 
                         OLR_array    = []
                         NET_array    = []
 
-                        # Loop through surface temperatures
-                        for T_surf in tmp_range:
+                        if os.path.isfile(data_file_name):
 
-                            print("###", setting, ":", vol, "@", round(P_surf/1e+5), "bar,", dist, "au,", Mstar, "M_sun,", round(tstar/1e+6), "Myr,", int(T_surf), "K", end=" ")
+                            tmp_range = []
 
-                            # Define file name and path
-                            file_name = str(setting) \
-                                        + "_"+vol  \
-                                        + "_Ps-" + str(round(P_surf/1e+5))  \
-                                        + "_d-"+str(dist)  \
-                                        + "_Mstar-" + str(Mstar)  \
-                                        + "_tstar-" + str(round(tstar/1e+6))  \
-                                        + "_Ts-" + str(int(T_surf))  \
-                                        + ".pkl"
-                            file_path = dirs["data_dir"]+"/"+file_name
+                            print("Read:", data_file_name)
 
-                            # If data exists, read it from file
-                            if os.path.isfile(file_path):
+                            with open(data_file_name, "r") as filestream:
+                                next(filestream) # skip header
+                                filestream = [line.rstrip('\n') for line in filestream]
+                                for line in filestream:
 
-                                # Read pickle file
-                                atm_stream = open(file_path, 'rb')
-                                atm = pkl.load(atm_stream)
-                                atm_stream.close()
+                                    data_values = line.split(" ")
+                                    tmp_range.append(float(data_values[0]))
+                                    OLR_array.append(float(data_values[1]))
+                                    NET_array.append(float(data_values[2]))
+                                    # print(data_values[0], data_values[1], data_values[2])
 
-                                print("--> Read file:", file_name)
-                            # Else: compute anew
-                            else:
+                        else:
 
-                                print("--> No file, create:", file_name)
+                            # Loop through surface temperatures
+                            for T_surf in tmp_range:
 
-                                # Create atmosphere object
-                                atm = atmos(T_surf, P_surf, vol_list)
+                                print("###", setting, ":", vol, "@", round(P_surf/1e+5), "bar,", dist, "au,", Mstar, "M_sun,", round(tstar/1e+6), "Myr,", int(T_surf), "K", end=" ")
 
-                                # Compute stellar heating
-                                atm.toa_heating = SocRadConv.InterpolateStellarLuminosity(Mstar, time, dist, atm.albedo_pl)
+                                # Define file name and path
+                                file_name = str(setting) \
+                                            + "_"+vol  \
+                                            + "_Ps-" + str(round(P_surf/1e+5))  \
+                                            + "_d-"+str(dist)  \
+                                            + "_Mstar-" + str(Mstar)  \
+                                            + "_tstar-" + str(round(tstar/1e+6))  \
+                                            + "_Ts-" + str(int(T_surf))  \
+                                            + ".pkl"
+                                file_path = dirs["data_dir"]+"/"+file_name
 
-                                # Compute atmospehre structure and fluxes
-                                atm_dry, atm = SocRadConv.RadConvEqm(dirs, time, atm, [], [], standalone=False, cp_dry=cp_dry, trpp=trpp)
+                                # If data exists, read it from file
+                                if os.path.isfile(file_path):
 
-                                # Use timestepped atm
-                                if setting == "tstep":
-                                    atm = atm_dry
+                                    # Read pickle file
+                                    atm_stream = open(file_path, 'rb')
+                                    atm = pkl.load(atm_stream)
+                                    atm_stream.close()
 
-                                # Save data to disk
-                                with open(file_path, "wb") as atm_file: 
-                                    pkl.dump(atm, atm_file)
+                                    print("--> Read file:", file_name)
+                                # Else: compute anew
+                                else:
 
-                            # OLR FLUX for plot A, NET FLUX for plot B
-                            OLR_array.append(atm.LW_flux_up[0])
-                            NET_array.append(atm.net_flux[0])
+                                    print("--> No file, create:", file_name)
+
+                                    # Create atmosphere object
+                                    atm = atmos(T_surf, P_surf, vol_list)
+
+                                    # Compute stellar heating
+                                    atm.toa_heating = SocRadConv.InterpolateStellarLuminosity(Mstar, time, dist, atm.albedo_pl)
+
+                                    # Compute atmospehre structure and fluxes
+                                    atm_dry, atm = SocRadConv.RadConvEqm(dirs, time, atm, [], [], standalone=False, cp_dry=cp_dry, trpp=trpp)
+
+                                    # Use timestepped atm
+                                    if setting == "tstep":
+                                        atm = atm_dry
+
+                                    # Save data to disk
+                                    with open(file_path, "wb") as atm_file: 
+                                        pkl.dump(atm, atm_file)
+
+                                # OLR FLUX for plot A, NET FLUX for plot B
+                                OLR_array.append(atm.LW_flux_up[0])
+                                NET_array.append(atm.net_flux[0])
+
+
+                            ##### Clean SOCRATES dir after each run
+                            CleanOutputDir( dirs["rad_conv"] )
+
+                            ## Write to file
+                            with open(data_file_name, 'a') as data_file:
+                                data_file.write("# T(K) F_LW(W m-2) F_atm(W m-2)\n")
+                                for idx, tmp in enumerate(tmp_range):
+                                    data_file.write(str(tmp)+" "+str(OLR_array[idx])+" "+str(NET_array[idx])+"\n")
 
                         ##### Plot A: OLR
                         if P_surf in prs_rangeA and dist_idx == 0:
@@ -311,7 +343,7 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
                             if prs_idx == 0: 
                                 legendA1_handles.append(l1)
                             if vol_idx == 0: 
-                                l2, = ax1.plot([0],[0], color="gray", ls=ls_list[prs_idx], lw=lw, label=r"$a$ = "+str(dist)+" au, $P_\mathrm{s}$ = "+str(round(P_surf/1e+5))+" bar")
+                                l2, = ax1.plot([0],[0], color="gray", ls=ls_list[prs_idx], lw=lw, label=r"$a$ = "+str(dist)+" au, $P_\mathrm{surf}$ = "+str(round(P_surf/1e+5))+" bar")
                                 legendA2_handles.append(l2)
 
                             # Literature comparison for corresponding correct settings
@@ -331,21 +363,12 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
                             if dist_idx == 0: 
                                 legendB1_handles.append(l3)
                             if Mstar_idx == 0 and vol_idx == 0:
-                                l4, = ax2.plot([0],[0], color=ga.vol_colors["qgray"], ls=ls_list[dist_idx], lw=lw, label=r"$a$ = "+str(dist)+" au, $P_\mathrm{s}$ = "+str(round(P_surf/1e+5))+" bar")
+                                l4, = ax2.plot([0],[0], color=ga.vol_colors["qgray"], ls=ls_list[dist_idx], lw=lw, label=r"$a$ = "+str(dist)+" au, $P_\mathrm{surf}$ = "+str(round(P_surf/1e+5))+" bar")
                                 legendB2_handles.append(l4)
 
                             # Set ylim range for subplot B
                             b_ymin = np.min([ b_ymin, np.min(NET_array) ])
                             b_ymax = np.max([ b_ymax, np.max(NET_array) ])
-
-                        ##### Clean SOCRATES dir after each run
-                        CleanOutputDir( dirs["rad_conv"] )
-
-                        ## Write to file
-                        with open('../data/fig4_radiation_limits/'+str(vol)+"_"+str(P_surf)+"_"+str(dist)+".txt", 'a') as data_file:
-                            data_file.write("T(K) F_LW(W m-2) F_atm(W m-2)")
-                            for idx, tmp in enumerate(tmp_range):
-                                data_file.write(str(tmp)+" "+str(OLR_array[idx])+" "+str(NET_array[idx]))
 
     ########## GENERAL PLOT SETTINGS
 
@@ -356,13 +379,13 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
 
     ##### PLOT A settings
     # Legend for the main volatiles
-    legendA1 = ax1.legend(handles=legendA1_handles, loc=2, ncol=2, fontsize=legend_fs)
+    legendA1 = ax1.legend(handles=legendA1_handles, loc=2, ncol=2, fontsize=legend_fs, title="Volatiles")
     ax1.add_artist(legendA1)
     # Legend for the line styles
-    legendA2 = ax1.legend(handles=legendA2_handles, loc=4, ncol=1, fontsize=legend_fs)
+    legendA2 = ax1.legend(handles=legendA2_handles, loc=4, ncol=1, fontsize=legend_fs, title="Fixed orbit")
 
-    ax1.set_xlabel(r'Surface temperature, $T_\mathrm{s}$ (K)', fontsize=label_fs)
-    ax1.set_ylabel(r'Outgoing longwave radiation, $F^{\uparrow}_\mathrm{OLR}$ (W m$^{-2}$)', fontsize=label_fs)
+    ax1.set_xlabel(r'Surface temperature, $T_\mathrm{surf}$ (K)', fontsize=label_fs)
+    ax1.set_ylabel(r'Outgoing longwave radiation, $F^{\uparrow}_\mathrm{LW}$ (W m$^{-2}$)', fontsize=label_fs)
     ax1.set_yscale("log")
     ax1.set_xlim(left=np.min(tmp_range), right=np.max(tmp_range))
     ax1.set_ylim(top=a_ymax*10)
@@ -376,10 +399,10 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
     # legendB1 = ax2.legend(handles=legendB1_handles, loc=2, ncol=2, fontsize=legend_fs)
     # ax2.add_artist(legendB1)
     # Legend for the line styles
-    legendB2 = ax2.legend(handles=legendB2_handles, loc=4, ncol=1, fontsize=legend_fs)
+    legendB2 = ax2.legend(handles=legendB2_handles, loc=4, ncol=1, fontsize=legend_fs, title="Fixed surface pressure")
 
     ax2.set_xlabel(r'Surface temperature, $T_\mathrm{s}$ (K)', fontsize=label_fs)
-    ax2.set_ylabel(r'Net outgoing radiation, $F^{\uparrow}_\mathrm{net}$ (W m$^{-2}$)', fontsize=label_fs)
+    ax2.set_ylabel(r'Outgoing net radiation, $F^{\uparrow}_\mathrm{atm}$ (W m$^{-2}$)', fontsize=label_fs)
     ax2.set_yscale("symlog")
     ax2.set_xlim(left=np.min(tmp_range), right=np.max(tmp_range))
     ax2.set_ylim(bottom=b_ymin*2., top=b_ymax*10)
@@ -397,9 +420,9 @@ for setting in [ "trpp", "moist" ]: # "trpp", "moist", "tstep"
 
     # Indicate cooling/heating regimes
     ax2.fill_between(tmp_range, 0, +1e+10, alpha=0.05, color="blue")
-    ax2.text(np.max(tmp_range)*0.99, 0.3, "Net cooling", va="bottom", ha="right", fontsize=legend_fs, color=ga.vol_colors["qblue_dark"])
-    ax2.text(np.max(tmp_range)*0.99, -0.3, "Net heating", va="top", ha="right", fontsize=legend_fs, color=ga.vol_colors["qred_dark"])
+    ax2.text(np.max(tmp_range)*0.99, 0.3, "Planet cools down", va="bottom", ha="right", fontsize=legend_fs, color=ga.vol_colors["qblue_dark"])
+    ax2.text(np.max(tmp_range)*0.99, -0.3, "Planet heats up", va="top", ha="right", fontsize=legend_fs, color=ga.vol_colors["qred_dark"])
     ax2.fill_between(tmp_range, 0, -1e+10, alpha=0.05, color="red")
 
-    plt.savefig( dirs["output"] + "/" + "radiation_limits" + "_" + setting + ".pdf", bbox_inches="tight")
+    plt.savefig( "../figures/fig_4.pdf", bbox_inches="tight")
     plt.close(fig)
