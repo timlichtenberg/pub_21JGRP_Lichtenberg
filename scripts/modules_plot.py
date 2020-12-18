@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-# Import utils-specific modules
-from utils.modules_utils import *
-from atm_rad_conv.SocRadConv import surf_Planck_nu
-
 import argparse
 import logging
 import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import numpy as np
@@ -15,7 +12,6 @@ import matplotlib.ticker as ticker
 import pandas as pd
 import matplotlib.transforms as transforms
 import mmap
-# import seaborn as sns
 import pathlib
 import errno
 import json
@@ -24,17 +20,18 @@ import fileinput # https://kaijento.github.io/2017/05/28/python-replacing-lines-
 import math
 import importlib.util
 import pickle as pkl
-
 from datetime import datetime
 from scipy import interpolate
-# from natsort import natsorted # https://pypi.python.org/pypi/natsort
 from decimal import Decimal
 from scipy.integrate import solve_ivp
 from scipy import stats
-
 from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.gridspec as gridspec
-
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+import numpy as np
+import seaborn as sns
+from matplotlib import cm
 
 # Color definitions, https://chrisalbon.com/python/seaborn_color_palettes.html
 qgray       = "#768E95"
@@ -58,8 +55,6 @@ qred_light   = "#eb9194"
 qturq_light  = "#57ccda"
 qmagenta_light = "#c29fb2"
 qyellow_light = "#f1ca70"
-
-# color_cycle2 = [ "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c", "#7f7f7f", "#bcbd22", "#17becf" ]
 
 from matplotlib import cm
 
@@ -260,11 +255,16 @@ def latex_float(f):
     else:
         return float_str
 
+def gravity( m, r ):
+
+    g = 6.67408E-11*m/r**2
+    return g
+
 def AtmosphericHeight(atm, m_planet, r_planet):
 
     z_profile       = np.zeros(len(atm.p))
     P_s             = np.max(atm.p)
-    grav_s          = su.gravity( m_planet, r_planet )
+    grav_s          = gravity( m_planet, r_planet )
 
     # Reverse arrays to go from high to low pressure
     atm.p   = atm.p[::-1]
@@ -279,8 +279,6 @@ def AtmosphericHeight(atm, m_planet, r_planet):
         # Gravity with height
         grav_z = grav_s * ((r_planet)**2) / ((r_planet + z_profile[n])**2)
 
-        # print(r_planet, grav_s, grav_z, z_profile[n])
-
         # Mean molar mass depending on mixing ratio
         mean_molar_mass = 0
         for vol in atm.vol_list.keys():
@@ -288,9 +286,6 @@ def AtmosphericHeight(atm, m_planet, r_planet):
 
         # Temperature below present height
         T_mean_below    = np.mean(atm.tmp[n:])
-
-        # # Direction calculation
-        # z_profile[n] = - R_gas * T_mean_below * np.log(atm.p[n]/P_s) / ( mean_molar_mass * grav_s )
 
         # Integration
         dz = - R_gas * T_mean_below * np.log(atm.p[n+1]/atm.p[n]) / (mean_molar_mass*grav_z)
@@ -371,3 +366,488 @@ molar_mass      = {
 
 volatile_species = [ "H2O", "CO2", "H2", "CH4", "CO", "N2", "O2", "S", "He" ]
 element_list     = [ "H", "O", "C", "N", "S", "He" ] 
+
+# Disable and enable print: https://stackoverflow.com/questions/8391411/suppress-calls-to-print-python
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+def enablePrint():
+    sys.stdout = sys.__stdout__
+
+def CleanOutputDir( output_dir ):
+    types = ("*.json", "*.log", "*.csv", "*.pkl", "current??.????", "profile.*") 
+    files_to_delete = []
+    for files in types:
+        files_to_delete.extend(glob.glob(output_dir+"/"+files))
+    for file in natural_sort(files_to_delete):
+        os.remove(file)
+
+dirs = {"output": "/Users/tim/bitbucket/pcd_couple-interior-atmosphere/atm_rad_conv/output", "data_dir": "/Users/tim/bitbucket/pcd_couple-interior-atmosphere/atm_rad_conv/output/radiation_limits_data", "rad_conv": "/Users/tim/bitbucket/pcd_couple-interior-atmosphere/atm_rad_conv"}
+
+def surf_Planck_nu(atm):
+    h   = 6.63e-34
+    c   = 3.0e8
+    kb  = 1.38e-23
+    B   = np.zeros(len(atm.band_centres))
+    c1  = 1.191042e-5
+    c2  = 1.4387752
+    for i in range(len(atm.band_centres)):
+        nu      = atm.band_centres[i]
+        B[i]    = (c1*nu**3 / (np.exp(c2*nu/atm.ts)-1))
+    B   = (1.-atm.albedo_s) * np.pi * B * atm.band_widths/1000.0
+    return B
+
+def get_all_output_times( odir='output' ):
+
+    '''get all times (in Myrs) from the json files located in the
+       output directory'''
+
+    # locate times to process based on files located in odir/
+    file_l = [f for f in os.listdir(odir) if os.path.isfile(os.path.join(odir,f))]
+    if not file_l:
+        logger.critical('output directory contains no files')
+        sys.exit(0)
+
+    time_l = [fname for fname in file_l]
+    time_l = list(filter(lambda a: a.endswith('json'), time_l))
+
+    # Filter out original/non-hacked jsons
+    time_l = [ file for file in time_l if not file.startswith("orig_")]
+
+    time_l = [int(time.split('.json')[0]) for time in time_l]
+    
+    # ascending order
+    time_l = sorted( time_l, key=int)
+    time_a = np.array( time_l )
+
+    return time_a
+
+def get_dict_surface_values_for_times( keys_t, time_l, indir='output'):
+
+    '''Similar to above, but only loop over all times once and get
+       all requested (surface / zero index) data in one go'''
+
+    data_l = []
+
+    for time in time_l:
+        filename = os.path.join( indir, '{}.json'.format(time) )
+        myjson_o = MyJSON( filename )
+        keydata_l = []
+        for key in keys_t:
+            values_a = myjson_o.get_dict_values( key )
+            try:
+                value = values_a[0]
+            except TypeError:
+                value = values_a
+            keydata_l.append( value )
+        data_l.append( keydata_l )
+
+    data_a = np.array( data_l )
+
+    # rows time, cols data
+    data_a.reshape( (len(time_l),-1 ) )
+    # rows data, cols time
+    data_a = data_a.transpose()
+
+    return data_a
+
+class MyJSON( object ):
+
+    '''load and access json data'''
+
+    def __init__( self, filename ):
+        self.filename = filename
+        self._load()
+
+    def _load( self ):
+        '''load and store json data from file'''
+        try:
+            json_data  = open( self.filename )
+        except FileNotFoundError:
+            logger.critical('cannot find file: %s', self.filename )
+            logger.critical('please specify times for which data exists')
+            sys.exit(1)
+        self.data_d = json.load( json_data )
+        json_data.close()
+
+    # was get_field_data
+    def get_dict( self, keys ):
+        '''get all data relating to a particular field'''
+        try:
+            dict_d = recursive_get( self.data_d, keys )
+            return dict_d
+        except NameError:
+            logger.critical('dictionary for %s does not exist', keys )
+            sys.exit(1)
+
+    # was get_field_units
+    def get_dict_units( self, keys ):
+        '''get the units (SI) of a particular field'''
+        dict_d = recursive_get( self.data_d, keys )
+        units = dict_d['units']
+        units = None if units == 'None' else units
+        return units
+
+    # was get_scaled_field_values
+    def get_dict_values( self, keys, fmt_o='' ):
+        '''get the scaled values for a particular quantity'''
+        dict_d = recursive_get( self.data_d, keys )
+        scaling = float(dict_d['scaling'])
+        if len( dict_d['values'] ) == 1:
+            values_a = float( dict_d['values'][0] )
+        else:
+            values_a = np.array( [float(value) for value in dict_d['values']] )
+        scaled_values_a = scaling * values_a
+        if fmt_o:
+            scaled_values_a = fmt_o.ascale( scaled_values_a )
+        return scaled_values_a
+
+    # was get_scaled_field_value_internal
+    def get_dict_values_internal( self, keys, fmt_o='' ):
+        '''get the scaled values for the internal nodes (ignore top
+           and bottom nodes)'''
+        scaled_values_a = self.get_dict_values( keys, fmt_o )
+        return scaled_values_a[1:-1]
+
+    def get_mixed_phase_boolean_array( self, nodes='basic' ):
+        '''this array enables us to plot different linestyles for
+           mixed phase versus single phase quantities'''
+        if nodes == 'basic':
+            phi = self.get_dict_values( ['data','phi_b'] )
+        elif nodes == 'basic_internal':
+            phi = self.get_dict_values_internal( ['data','phi_b'] )
+        elif nodes == 'staggered':
+            phi = self.get_dict_values( ['data','phi_s'] )
+        # define mixed phase by these threshold values
+        MIX = (phi<0.999) & (phi>0.001)
+        MIX = MIX * 1.0 # convert to float array
+        # set single phase region to nan to prevent plotting
+        MIX[MIX==0] = np.nan
+        return MIX
+
+    def get_rho_interp1d( self ):
+        '''return interp1d object for determining density as a
+           function of pressure for static structure calculations'''
+        pressure_a = self.get_dict_values( ['data','pressure_s'] )
+        density_a = self.get_dict_values( ['data','rho_s'] )
+        rho_interp1d = interp1d( pressure_a, density_a, kind='linear',
+            fill_value='extrapolate' )
+        return rho_interp1d
+
+    def get_temp_interp1d( self ):
+        '''return interp1d object for determining temperature as a
+           function of pressure for static structure calculations'''
+        pressure_a = self.get_dict_values( ['data','pressure_b'] )
+        temp_a = self.get_dict_values( ['data','temp_b'] )
+        temp_interp1d = interp1d( pressure_a, temp_a, kind='linear',
+            fill_value='extrapolate' )
+        return temp_interp1d
+
+    def get_atm_struct_depth_interp1d( self ):
+        '''return interp1d object for determining atmospheric height
+           as a function of pressure for static structure calculations'''
+        apressure_a = self.get_dict_values( ['atmosphere', 'atm_struct_pressure'] )
+        adepth_a = self.get_dict_values( ['atmosphere', 'atm_struct_depth'] )
+        atm_interp1d = interp1d( apressure_a, adepth_a, kind='linear' )
+        return atm_interp1d
+
+    def get_atm_struct_temp_interp1d( self ):
+        '''return interp1d object for determining atmospheric temperature
+           as a function of pressure'''
+        apressure_a = self.get_dict_values( ['atmosphere', 'atm_struct_pressure'] )
+        atemp_a = self.get_dict_values( ['atmosphere', 'atm_struct_temp'] )
+        atm_interp1d = interp1d( apressure_a, atemp_a, kind='linear' )
+        return atm_interp1d
+
+def recursive_get(d, keys):
+
+    '''function to access nested dictionaries'''
+
+    if len(keys) == 1:
+        return d[keys[0]]
+    return recursive_get(d[keys[0]], keys[1:])
+
+def get_all_output_pkl_times( odir='output' ):
+
+    '''get all times (in Myrs) from the pkl files located in the
+       output directory'''
+
+    # locate times to process based on files located in odir/
+    file_l = [f for f in os.listdir(odir) if os.path.isfile(os.path.join(odir,f))]
+    if not file_l:
+        logger.critical('output directory contains no PKL files')
+        sys.exit(0)
+
+    time_l = [fname for fname in file_l]
+    time_l = list(filter(lambda a: a.endswith('pkl'), time_l))
+
+    # print(time_l)
+
+    # Filter and split files
+    time_l = [ file for file in time_l if not file.startswith("orig_")]
+    time_l = [ time.split('.pkl')[0] for time in time_l ]
+    time_l = [ int(time.split('_atm')[0]) for time in time_l ]
+    
+    # ascending order
+    time_l = sorted( time_l, key=int)
+    time_a = np.array( time_l )
+
+    return time_a
+
+class FigureData( object ):
+
+    def __init__( self, nrows, ncols, width, height, outname='fig',
+        times=None, units='kyr' ):
+        dd = {}
+        self.data_d = dd
+        if times:
+            dd['time_l'] = times
+            self.process_time_list()
+        if units:
+            dd['time_units'] = units
+            dd['time_decimal_places'] = 2 # hard-coded
+        dd['outname'] = outname
+        self.set_properties( nrows, ncols, width, height )
+
+    def get_color( self, num ):
+        dd = self.data_d
+        return dd['colors_l'][num]
+
+    def get_legend_label( self, time ):
+        dd = self.data_d
+        units = dd['time_units']
+        dp = dd['time_decimal_places']
+        age = float(time)
+        if units == 'yr':
+            age = round( age, 0 )
+            label = '%d'
+        elif units == 'kyr':
+            age /= 1.0E3
+            label = '%0.1f'
+        elif units == 'Myr':
+            age /= 1.0E6
+            label = '%0.2f'
+        elif units == 'Byr' or units == 'Gyr':
+            age /= 1.0E9
+            label = '%0.2f'
+        #label = '%0.{}e'.format( dp )
+        #label = '%0.{}f'.format( dp )
+        label = label % age
+        return label
+
+    def process_time_list( self ):
+        dd = self.data_d
+        time_l = dd['time_l']
+        try:
+            time_l = [int(time_l)]
+        except ValueError:
+            time_l = [int(time) for time in time_l.split(',')]
+        self.time = time_l
+
+    def make_figure( self ):
+        dd = self.data_d
+        nrows = dd['nrows']
+        ncols = dd['ncols']
+        fig, ax = plt.subplots( nrows, ncols )
+        fig.subplots_adjust(wspace=0.3,hspace=0.3)
+        fig.set_size_inches( dd['width'], dd['height'] )
+        self.fig = fig
+        self.ax = ax
+
+    def savefig( self, num ):
+        dd = self.data_d
+        if dd['outname']:
+            outname = dd['outname'] + '.pdf'
+        else:
+            outname = 'fig{}.pdf'.format( num)
+        self.fig.savefig(outname, transparent=True, bbox_inches='tight',
+            pad_inches=0.05, dpi=dd['dpi'])
+
+    def set_colors( self, num=8, cmap='bkr8' ):
+        dd = self.data_d
+        # color scheme from Tim.  Nice reds and blues
+        colors_l = ['#2364A4',
+                   '#1695F9',
+                   '#95D5FD',
+                   '#8B0000',
+                   '#CD5C5C',
+                   '#FA141B',
+                   '#FFA07A']
+        # color scheme 'bkr8' for light background from Crameri
+        # see f_Colours.m at http://www.fabiocrameri.ch/visualisation.php
+        # this is actually very similar (same?) as Tim's scheme above
+        # used in Bower et al. (2018)
+        if cmap=='bkr8' and num==3:
+            colors_l = [(0.0,0.0,0.3),
+                        #(0.1,0.1,0.5),
+                        #(0.2,0.2,0.7),
+                        (0.4,0.4,0.8),
+                        #(0.8,0.4,0.4),
+                        #(0.7,0.2,0.2),
+                        (0.5,0.1,0.1)]#,
+                        #(0.3,0.0,0.0)]
+            colors_l.reverse()
+        elif cmap=='bkr8' and num==5:
+            colors_l = [(0.0,0.0,0.3),
+                        #(0.1,0.1,0.5),
+                        (0.2,0.2,0.7),
+                        #(0.4,0.4,0.8),
+                        (0.8,0.4,0.4),
+                        #(0.7,0.2,0.2),
+                        (0.5,0.1,0.1),
+                        (0.3,0.0,0.0)]
+            colors_l.reverse()
+        elif cmap=='bkr8' and num==6:
+            colors_l = [(0.0,0.0,0.3),
+                        (0.1,0.1,0.5),
+                        (0.2,0.2,0.7),
+                        #(0.4,0.4,0.8),
+                        #(0.8,0.4,0.4),
+                        (0.7,0.2,0.2),
+                        (0.5,0.1,0.1),
+                        (0.3,0.0,0.0)]
+            colors_l.reverse()
+        elif cmap=='bkr8' and num==8:
+            colors_l = [(0.0,0.0,0.3),
+                        (0.1,0.1,0.5),
+                        (0.2,0.2,0.7),
+                        (0.4,0.4,0.8),
+                        (0.8,0.4,0.4),
+                        (0.7,0.2,0.2),
+                        (0.5,0.1,0.1),
+                        (0.3,0.0,0.0)]
+            colors_l.reverse()
+        else:
+            try:
+                cmap = plt.get_cmap( cmap )
+            except ValueError:
+                cmap = plt.get_cmap('viridis_r')
+            colors_l = [cmap(i) for i in np.linspace(0, 1, num)]
+        dd['colors_l'] = colors_l
+
+    def set_properties( self, nrows, ncols, width, height ):
+        dd = self.data_d
+        dd['nrows'] = nrows
+        dd['ncols'] = ncols
+        dd['width'] = width # inches
+        dd['height'] = height # inches
+        # TODO: breaks for MacOSX, since I don't think Mac comes
+        # with serif font.  But whatever it decides to switch to
+        # also looks OK and LaTeX-like.
+        font_d = {'family' : 'sans-serif',
+                  #'style': 'normal',
+                  #'weight' : 'bold'
+                  'serif': ['Arial'],
+                  'sans-serif': ['Arial'],
+                  'size'   : '10'}
+        mpl.rc('font', **font_d)
+        # Do NOT use TeX font for labels etc.
+        plt.rc('text', usetex=False)
+        dd['dpi'] = 300
+        dd['extension'] = 'png'
+        dd['fontsize_legend'] = 8
+        dd['fontsize_title'] = 10
+        dd['fontsize_xlabel'] = 10
+        dd['fontsize_ylabel'] = 10
+        try:
+            self.set_colors( len(self.time) )
+        except AttributeError:
+            self.set_colors( num=8 )
+        self.make_figure()
+
+    def set_myaxes( self, ax, title='', xlabel='', xticks='',
+        ylabel='', yticks='', yrotation='', fmt='', xfmt='', xmin='', xmax='', ymin='', ymax='' ):
+        if title:
+            self.set_mytitle( ax, title )
+        if xlabel:
+            self.set_myxlabel( ax, xlabel )
+        if xticks:
+            self.set_myxticks( ax, xticks, xmin, xmax, xfmt )
+        if ylabel:
+            self.set_myylabel( ax, ylabel, yrotation )
+        if yticks:
+            self.set_myyticks( ax, yticks, ymin, ymax, fmt )
+
+    def set_mylegend( self, ax, handles, loc=4, ncol=1, TITLE=None, **kwargs ):
+        dd = self.data_d
+        fontsize = self.data_d['fontsize_legend']
+        # FIXME
+        if not TITLE:
+            legend = ax.legend(handles=handles, loc=loc, ncol=ncol, fontsize=fontsize, **kwargs )
+            #units = dd['time_units']
+            #title = r'Time ({0})'.format( units )
+        else:
+            title = TITLE
+            legend = ax.legend(title=title, handles=handles, loc=loc,
+                ncol=ncol, fontsize=fontsize, **kwargs)
+        plt.setp(legend.get_title(),fontsize=fontsize)
+
+    def set_mytitle( self, ax, title ):
+        dd = self.data_d
+        fontsize = dd['fontsize_title']
+        title = r'{}'.format( title )
+        ax.set_title( title, fontsize=fontsize )
+
+    def set_myxlabel( self, ax, label ):
+        dd = self.data_d
+        fontsize = dd['fontsize_xlabel']
+        label = r'{}'.format( label )
+        ax.set_xlabel( label, fontsize=fontsize )
+
+    def set_myylabel( self, ax, label, yrotation ):
+        dd = self.data_d
+        fontsize = dd['fontsize_ylabel']
+        if not yrotation:
+            yrotation = 'horizontal'
+        label = r'{}'.format( label )
+        ax.set_ylabel( label, fontsize=fontsize, rotation=yrotation )
+
+    def set_myxticks( self, ax, xticks, xmin, xmax, fmt ):
+        dd = self.data_d
+        if fmt:
+            xticks = fmt.ascale( np.array(xticks) )
+            ax.xaxis.set_major_formatter(
+                mpl.ticker.FuncFormatter(fmt))
+        ax.set_xticks( xticks)
+        # set x limits to match extent of ticks
+        if not xmax: xmax=xticks[-1]
+        if not xmin: xmin=xticks[0]
+        ax.set_xlim( xmin, xmax )
+
+    def set_myyticks( self, ax, yticks, ymin, ymax, fmt ):
+        dd = self.data_d
+        if fmt:
+            yticks = fmt.ascale( np.array(yticks) )
+            ax.yaxis.set_major_formatter(
+                mpl.ticker.FuncFormatter(fmt))
+        ax.set_yticks( yticks)
+        # set y limits to match extent of ticks
+        if not ymax: ymax=yticks[-1]
+        if not ymin: ymin=yticks[0]
+        ax.set_ylim( ymin, ymax )
+
+import phys
+## Saturation vapor pressure [Pa] for given temperature T [K]. 
+def p_sat(switch,T): 
+    
+    # Define volatile
+    if switch == 'H2O':
+        e = phys.satvps_function(phys.water)
+    if switch == 'CH4':
+        e = phys.satvps_function(phys.methane)
+    if switch == 'CO2':
+        e = phys.satvps_function(phys.co2)
+    if switch == 'CO':
+        e = phys.satvps_function(phys.co)
+    if switch == 'N2':
+        e = phys.satvps_function(phys.n2)
+    if switch == 'O2':
+        e = phys.satvps_function(phys.o2)
+    if switch == 'H2':
+        e = phys.satvps_function(phys.h2)
+    if switch == 'He':
+        e = phys.satvps_function(phys.he)
+    if switch == 'NH3':
+        e = phys.satvps_function(phys.nh3)
+    
+    # Return saturation vapor pressure
+    return e(T)

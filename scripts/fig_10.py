@@ -6,29 +6,12 @@ from modules_plot import *
 #====================================================================
 def plot_atmosphere( output_dir, sub_dirs ):
 
-    # article class text width is 4.7747 inches
-    # http://tex.stackexchange.com/questions/39383/determine-text-width
-    # logger.info( 'building stacked interior atmosphere' )
-
     width   = 12.00 #* 3.0/2.0
     height  = 6.0
-    
-    # fig_o   = su.FigureData( 1, 3, width, height, output_dir+'/compare_sfd+melt', units='kyr' )
-    # fig_o.fig.subplots_adjust(wspace=0.15, hspace=0.0)
 
-    
-
-    # ax0 = fig_o.ax[0]#[0]
-    # ax1 = fig_o.ax[1]#[1]
-    # ax2 = fig_o.ax[2]#[0]
-    # # ax3 = fig_o.ax[1][1]
-
-    # Define figure with gridspec
-    # https://matplotlib.org/3.2.1/tutorials/intermediate/gridspec.html
     fig = plt.figure(tight_layout=True, constrained_layout=False, figsize=[width, height])
 
     gs = fig.add_gridspec(nrows=2, ncols=4, wspace=0.1, hspace=0.25, left=0.055, right=0.98, top=0.98, bottom=0.08)
-
 
     ax0 = fig.add_subplot(gs[0, 0:2])
     ax1 = fig.add_subplot(gs[1, 0])
@@ -37,12 +20,8 @@ def plot_atmosphere( output_dir, sub_dirs ):
     ax0b = fig.add_subplot(gs[0, 2:4])
     ax1b = fig.add_subplot(gs[1, 2])
     ax2b = fig.add_subplot(gs[1, 3])
-
-    # sns.set_style("ticks")
-    # sns.despine()
-
     
-    handle_l = [] # handles for legend
+    handle_l = []
 
     ymax_atm_pressure   = 0
     ymin_atm_pressure   = 1000
@@ -59,12 +38,8 @@ def plot_atmosphere( output_dir, sub_dirs ):
     legend_ax0_handles = []
     legend_ax0b_handles = []
 
-
-    # Show wavelenght or wavenumber
+    # Show wavelength or wavenumber
     print_wavelength = True
-
-    # # Load runtime helpfile
-    # runtime_helpfile = pd.read_csv(output_dir+"runtime_helpfile.csv")
 
     for subdir in sub_dirs:
 
@@ -108,7 +83,7 @@ def plot_atmosphere( output_dir, sub_dirs ):
             print(data_dir)
 
             # Read in time sequences
-            data_times = su.get_all_output_times(data_dir)
+            data_times = get_all_output_times(data_dir)
             keys = ( ('atmosphere','mass_liquid'),
                        ('atmosphere','mass_solid'),
                        ('atmosphere','mass_mantle'),
@@ -121,7 +96,7 @@ def plot_atmosphere( output_dir, sub_dirs ):
                        ('rheological_front_dynamic','depth'),
                        ('rheological_front_dynamic','mesh_index')
                        )
-            data = su.get_dict_surface_values_for_times( keys, data_times, data_dir )
+            data = get_dict_surface_values_for_times( keys, data_times, data_dir )
             mass_liquid         = data[0,:]
             mass_solid          = data[1,:]
             mass_mantle         = data[2,:]
@@ -141,11 +116,6 @@ def plot_atmosphere( output_dir, sub_dirs ):
             # print(rheol_front/np.max(rheol_front))
             RF_depth_crit_num, RF_depth_crit_idx = find_nearest(rheol_front/np.max(rheol_front), RF_depth_crit)
             RF_depth_crit_time   = data_times[RF_depth_crit_idx]
-            
-            # RF_half_depth, RF_half_depth_idx = find_nearest(rheol_front, 0.5)
-            # RF_half_depth_time   = data_times[RF_half_depth_idx]
-            # Phi_global_intersect = phi_global[RF_half_depth_idx]
-            # print("RF:", RF_half_depth_idx, RF_half_depth, RF_half_depth_time, Phi_global_intersect)
 
             phi_crit = 0.2
             phi_crit_num, phi_crit_idx = find_nearest(phi_global, phi_crit)
@@ -160,18 +130,13 @@ def plot_atmosphere( output_dir, sub_dirs ):
             if setting == "":
                 output_time =  RF_depth_crit_time
 
-            # print(RF_depth_crit_time)
-
-            # # Fix output time
-            # output_time = 1e+5
-
             # Find data_time closest to output_time wanted
-            atm_data_times = su.get_all_output_pkl_times(data_dir)
+            atm_data_times = get_all_output_pkl_times(data_dir)
             # print(atm_data_times)
             time, time_idx = find_nearest(atm_data_times, output_time)
 
             # Find planet mass and radius
-            myjson_o  = su.MyJSON( data_dir+'/{}.json'.format(data_times[0]) )
+            myjson_o  = MyJSON( data_dir+'/{}.json'.format(data_times[0]) )
             xx_radius = myjson_o.get_dict_values(['data','radius_b'])*1.0E-3
             r_planet  = np.max(xx_radius*1e3) # m
             core_mass   = myjson_o.get_dict_values(['atmosphere','mass_core'])
@@ -204,7 +169,7 @@ def plot_atmosphere( output_dir, sub_dirs ):
             
             ### INTERIOR
 
-            myjson_o = su.MyJSON( data_dir+"/"+'{}.json'.format(time) )
+            myjson_o = MyJSON( data_dir+"/"+'{}.json'.format(time) )
 
             # Melt fraction
             mantle_prs = myjson_o.get_dict_values(['data','pressure_b'])*1.0E-9
@@ -434,7 +399,7 @@ def main():
     #     data_times = [ int(time) for time in args.times.split(',') ]
     #     print("Snapshots:", output_times)
     # else:
-    #     data_times = su.get_all_output_times(output_dir)
+    #     data_times = get_all_output_times(output_dir)
     #     print("Snapshots:", output_times)
 
     vols    = [ "H2O", "H2" ] #, "CO", "O2"

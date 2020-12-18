@@ -1,8 +1,5 @@
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-import numpy as np
-import seaborn as sns
-from matplotlib import cm
+#!/usr/bin/env python3
+from modules_plot import *
 
 # plt.figure()
 plt.figure(figsize=(10, 8)) 
@@ -15,9 +12,6 @@ sns.set_style("ticks")
 sns.despine()
 
 # Color definitions: 
-# https://www.codecademy.com/articles/seaborn-design-ii
-# https://python-graph-gallery.com/python-colors/
-# https://matplotlib.org/tutorials/colors/colormaps.html
 no_colors   = 7
 vol_colors = {
     "H2O"            : cm.get_cmap('PuBu', no_colors)(range(no_colors)),
@@ -118,11 +112,10 @@ X_max_ppm   = 1e+6              # ppmw
 
 ### Plot handles for legend
 data_handles_title, = plt.plot([0], [0], color='k', ls='-', alpha=0.0, label=r'$\mathbf{Data}$')
-# fits_handles_title, = plt.plot([0], [0], color='k', ls='-', alpha=0.0, label=r'$\mathbf{Applied \; fits}$ ($\alpha$, $\beta$)')
 fits_handles_title, = plt.plot([0], [0], color='k', ls='-', alpha=0.0, label=r'$\mathbf{Volatile \; species}$')
 lit_handles_title,  = plt.plot([0], [0], color='k', ls='-', alpha=0.0, label=r'$\mathbf{Literature \; comparison}$  ($\alpha$, $\beta$)')
 handles_data = [data_handles_title] # data
-handles_fits = []#[fits_handles_title] # fits
+handles_fits = [] # fits
 handles_lit  = [lit_handles_title]  # literature fits
 
 # Plotting styles
@@ -417,7 +410,7 @@ ch4_ardia13_solubility  = [ i for i in ch4_ardia13_solubility ]     # ppm wt
 ### Plot data
 data_ch4, = plt.plot(ch4_ardia13_fCH4, ch4_ardia13_solubility, '^', markersize=ms, color=vol_colors["CH4"][col_idx], label=vol_latex["CH4"])
 
-### PLot fit
+### Plot fit
 popt_ch4, pcov_ch4  = curve_fit(henrys_law_linear, ch4_ardia13_fCH4, ch4_ardia13_solubility)
 pressure_ch4        = np.linspace(prs_min, prs_max, 100)
 fit_ch4             = np.zeros(len(pressure_ch4))
@@ -523,7 +516,7 @@ else:
 # High fO2 data for very oxidized systems
 data_Nhigh, = plt.plot(n2_fN2_highfO2, n2_solubility_highfO2, '^', markersize=ms, color=vol_colors["N2"][col_idx+0], label=r"N, $f$O$_2 \gtrsim$IW" )
 
-### ! ATTENTION ! – Hand fit for high fO2 data
+### Hand fit for high fO2 data
 
 # # ! This is high-P heavy, don't use !
 # fit_Nhigh2, = plt.plot(pressure_n2, fit_n2_highfO2, color=vol_colors["N2"][col_idx+2], ls='--', label=r'$N$ fit, $fO_2 \gtrsim$ IW: $\alpha$=%1.3e, $\beta$=%1.3e' % tuple(popt_n2_highfO2))
@@ -548,45 +541,6 @@ handles_data.append(data_Nlow)
 handles_fits.append(fit_Nlow)
 handles_data.append(data_Nhigh)
 handles_fits.append(fit_Nhigh)
-
-######################################################################################
-######################################################################################
-######################################## He ##########################################
-######################################################################################
-######################################################################################
-### ! ATTENTION ! – He data needs to be double checked
-### Data is inconsistent, comment following block in to visualize
-
-'''###### Comment block start
-
-### Import data
-he_paonita2000_data= np.loadtxt(data_dir+"He_Paonita_2000.txt", delimiter=", ")
-he_paonita2000_pressure   = []
-he_paonita2000_solubility = []
-
-### Adjust units
-for i in range(0, len(he_paonita2000_data)):
-    he_paonita2000_pressure.append(he_paonita2000_data[i][0])              # MPa 
-    he_paonita2000_solubility.append(he_paonita2000_data[i][1])            # mol/mol
-he_paonita2000_pressure    = [ i*1e6 for i in he_paonita2000_pressure ]    # MPa --> Pa
-he_paonita2000_solubility  = [ i*1e6 for i in he_paonita2000_solubility ]  # mol/mol--> ppm wt 
-
-### Plot data
-data_he, = plt.plot(he_paonita2000_pressure, he_paonita2000_solubility, '^', markersize=ms, color="darkturquoise", label="$He$ data")
-
-### Plot fit
-popt_he, pcov_he  = curve_fit(henrys_law_linear, he_paonita2000_pressure, he_paonita2000_solubility)
-pressure_he        = np.linspace(prs_min, prs_max, 100)
-fit_he             = np.zeros(len(pressure_he))
-for i in range(0, 100):
-    fit_he[i] = henrys_law_linear(pressure_he[i], *popt_he)
-fit_he, = plt.plot(pressure_he, fit_he, color="darkturquoise", ls='-', lw=lw, label=r'$He$ fit: $\alpha$=%1.3e, $\beta$=1.0' % popt_he)
-
-### Add handles for legend
-handles_data.append(data_he)
-handles_fits.append(fit_he)
-
-'''###### / Comment block end
 
 #####################################################################################
 ############################# LITERATURE FITS #######################################
@@ -705,45 +659,6 @@ if show_literature_comparison == True:
         lit_ch4_keppler19, = plt.plot(pressure, solubility, color=vol_colors["CH4"][col_idx], ls='--', lw=lw_lit, label=vol_latex["CH4"])
     handles_lit.append(lit_ch4_keppler19)
 
-    #####################
-    ######### C #########
-    #####################
-
-    # ########### Hirschmann 2016, American Mineralogist
-    # # C, oxidized
-    # pressure        = np.linspace(prs_min, prs_max, 100)
-    # solubility      = np.zeros(len(pressure))
-    # alpha           = 1.6                 # ppm wt / MPa
-    # beta            = 1.
-    # alpha           = alpha * 1e-6        # --> ppm wt / Pa
-    # beta            = beta
-    # for i in range(0, 100):
-    #     solubility[i] = henrys_law(pressure[i], alpha, beta)
-    # lit_c1_hirschmann16, = plt.plot(pressure, solubility, color=vol_colors["qgreen_light"], ls=':', lw=2, label=r'$C$, oxidized: Hirschmann 2016: $\alpha$=%1.3e' % tuple([alpha]))
-    # handles_lit.append(lit_c1_hirschmann16)
-    # # C, reduced
-    # pressure        = np.linspace(prs_min, prs_max, 100)
-    # solubility      = np.zeros(len(pressure))
-    # alpha           = 0.55                # ppm wt / MPa
-    # beta            = 1.
-    # alpha           = alpha * 1e-6        # --> ppm wt / Pa
-    # beta            = beta
-    # for i in range(0, 100):
-    #     solubility[i] = henrys_law(pressure[i], alpha, beta)
-    # lit_c2_hirschmann16, = plt.plot(pressure, solubility, color=vol_colors["qgreen_light"], ls=':', lw=2, label=r'$C$, reduced: Hirschmann 2016: $\alpha$=%1.3e' % tuple([alpha]))
-    # handles_lit.append(lit_c2_hirschmann16)
-    # # C, very reduced
-    # pressure        = np.linspace(prs_min, prs_max, 100)
-    # solubility      = np.zeros(len(pressure))
-    # alpha           = 0.22                # ppm wt / MPa
-    # beta            = 1.
-    # alpha           = alpha * 1e-6        # --> ppm wt / Pa
-    # beta            = beta
-    # for i in range(0, 100):
-    #     solubility[i] = henrys_law(pressure[i], alpha, beta)
-    # lit_c3_hirschmann16, = plt.plot(pressure, solubility, color=vol_colors["qgreen_light"], ls=':', lw=2, label=r'$C$, very reduced: Hirschmann 2016: $\alpha$=%1.3e' % tuple([alpha]))
-    # handles_lit.append(lit_c3_hirschmann16)
-
 if show_literature_fits == True:
 
     #####################
@@ -836,5 +751,4 @@ if show_literature_comparison == True:
     ax = plt.gca().add_artist(legend_literature)
 
 ### Output figure
-
 plt.savefig("../figures/fig_2.pdf", bbox_inches="tight")

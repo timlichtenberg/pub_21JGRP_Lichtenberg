@@ -1,22 +1,5 @@
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import matplotlib
-import pandas as pd
-from scipy import interpolate
-import copy
-import pathlib
-import pickle as pkl
-import json
-import glob, re, os
-import seaborn as sns
-import phys
-
-import GeneralAdiabat as ga
-import SocRadModel
-import SocRadConv
-from atmosphere_column import atmos
-
+#!/usr/bin/env python3
+from modules_plot import *
 
 ### Initial conditions
 
@@ -51,7 +34,7 @@ vol_dict    = {
 
 ls_list = [ "-", "--", ":", "-." ]
 lw      = 1.5
-col_idx = 4
+col_idx = 5
 
 # Font sizes 
 fs_l = 16
@@ -103,24 +86,24 @@ for vol_idx, vol in enumerate(reversed(vol_list)):
         with open(atm_file, "wb") as atm_stream: pkl.dump(atm, atm_stream)
 
     # Temperature vs. pressure
-    l1, = ax1.semilogy(atm.tmp,(atm.p)/1e+5, color=ga.vol_colors[vol][col_idx], ls="-", lw=lw, label=ga.vol_latex[vol])
+    l1, = ax1.semilogy(atm.tmp,(atm.p)/1e+5, color=vol_colors[vol][col_idx], ls="-", lw=lw, label=vol_latex[vol])
 
     # Saturation vapor pressure for given temperature
-    Psat_array = [ ga.p_sat(vol, T) for T in atm.tmp  ]
-    ax1.semilogy( atm.tmp, np.array(Psat_array)/1e+5, lw=lw*0.8, ls="--", color=ga.vol_colors[vol][col_idx])
+    Psat_array = [ p_sat(vol, T) for T in atm.tmp  ]
+    ax1.semilogy( atm.tmp, np.array(Psat_array)/1e+5, lw=lw*0.8, ls="--", color=vol_colors[vol][col_idx])
 
     # Find intersection
     idx = np.argwhere(np.diff(np.sign(Psat_array-atm.p))).flatten()
     if len(idx) >= 1:
       idx = idx[-1]+1
-      ax1.axhline( atm.p[idx]/1e+5, xmin=atm.tmp[idx]/np.max(atm.tmp), xmax=1, lw=lw*0.5, ls=":", color=ga.vol_colors[vol][col_idx], alpha=0.5)
+      ax1.axhline( atm.p[idx]/1e+5, xmin=atm.tmp[idx]/np.max(atm.tmp), xmax=1, lw=lw*0.5, ls=":", color=vol_colors[vol][col_idx], alpha=0.5)
 
     # Add to legend 1
     legend1_handles.append(l1)
 
 # Annotate
-ax1.text(0.995, 0.24, 'Saturated: moist convection', color=ga.vol_colors["H2O"][col_idx], rotation=0, ha="right", va="bottom", fontsize=fs_s, transform=ax1.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
-ax1.text(0.995, 0.225, 'Unsatured: dry convection', color=ga.vol_colors["H2O"][col_idx], rotation=0, ha="right", va="top", fontsize=fs_s, transform=ax1.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
+ax1.text(0.995, 0.24, 'Saturated: moist convection', color=vol_colors["H2O"][col_idx], rotation=0, ha="right", va="bottom", fontsize=fs_s, transform=ax1.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
+ax1.text(0.995, 0.225, 'Unsatured: dry convection', color=vol_colors["H2O"][col_idx], rotation=0, ha="right", va="top", fontsize=fs_s, transform=ax1.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
 
 # Legends 1
 legend1 = ax1.legend(handles=legend1_handles, loc=1, ncol=3, fontsize=fs_m, framealpha=0.99, title="Volatile cases")
@@ -129,8 +112,8 @@ title = legend1.get_title()
 title.set_fontsize(fs_m)
 
 # Legend 2
-l2a, = ax1.plot([0], [0], lw=lw, ls="-", color=ga.vol_colors["qgray"], label="Adiabat")
-l2b, = ax1.plot([0], [0], lw=lw, ls="--", color=ga.vol_colors["qgray_dark"], label=r"$p^{i}_\mathrm{sat}$")
+l2a, = ax1.plot([0], [0], lw=lw, ls="-", color=vol_colors["qgray"], label="Adiabat")
+l2b, = ax1.plot([0], [0], lw=lw, ls="--", color=vol_colors["qgray_dark"], label=r"$p^{i}_\mathrm{sat}$")
 legend2_handles.append(l2a)
 legend2_handles.append(l2b)
 legend2 = ax1.legend(handles=legend2_handles, loc=5, ncol=1, fontsize=fs_m, framealpha=0.0)
@@ -145,7 +128,6 @@ ax1.set_xticks([10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000])
 ax1.set_yticks([1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0, 1e1, 1e2, 260])
 ax1.set_xticklabels([10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], fontsize=fs_s)
 ax1.set_yticklabels([r"$10^{-5}$", r"$10^{-4}$", r"$10^{-3}$", r"$10^{-2}$", r"$10^{-1}$", r"$10^{0}$", r"$10^{1}$", r"$10^{2}$", "260"], fontsize=fs_s)
-
 
 plt.savefig(dirs["output"]+"fig_3.pdf", bbox_inches="tight")
 plt.close(fig)

@@ -2,51 +2,21 @@
 
 # Import utils- and plot-specific modules
 from modules_plot import *
-from utils.modules_utils import *
-
-import matplotlib.gridspec as gridspec
-import json
 
 #====================================================================
 def plot_atmosphere( output_dir, sub_dirs ):
 
-    # article class text width is 4.7747 inches
-    # http://tex.stackexchange.com/questions/39383/determine-text-width
-    # logger.info( 'building stacked interior atmosphere' )
-
     width   = 12.00 #* 3.0/2.0
     height  = 5.0
     
-    # fig_o   = su.FigureData( 1, 3, width, height, output_dir+'/compare_sfd+melt', units='kyr' )
-    # fig_o.fig.subplots_adjust(wspace=0.15, hspace=0.0)
-
-    
-
-    # ax0 = fig_o.ax[0]#[0]
-    # ax1 = fig_o.ax[1]#[1]
-    # ax2 = fig_o.ax[2]#[0]
-    # # ax3 = fig_o.ax[1][1]
-
-    # Define figure with gridspec
-    # https://matplotlib.org/3.2.1/tutorials/intermediate/gridspec.html
     fig = plt.figure(tight_layout=True, constrained_layout=False, figsize=[width, height])
-
     gs = fig.add_gridspec(nrows=1, ncols=2, wspace=0.1, hspace=0.25, left=0.055, right=0.98, top=0.98, bottom=0.09)
-
 
     ax0 = fig.add_subplot(gs[0, 0])
     ax1 = fig.add_subplot(gs[0, 1])
-    # ax2 = fig.add_subplot(gs[1, 1])
-
-    # ax0b = fig.add_subplot(gs[0, 2:4])
-    # ax1b = fig.add_subplot(gs[1, 2])
-    # ax2b = fig.add_subplot(gs[1, 3])
-
-    # sns.set_style("ticks")
-    # sns.despine()
 
     
-    handle_l = [] # handles for legend
+    handle_l = []
 
     ymax_atm_pressure   = 0
     ymin_atm_pressure   = 1000
@@ -70,10 +40,6 @@ def plot_atmosphere( output_dir, sub_dirs ):
     # Define smoothing length
     nsmooth = 1
 
-    # # Load runtime helpfile
-    # runtime_helpfile = pd.read_csv(output_dir+"runtime_helpfile.csv")
-
-    
     data_file_photosphere = '../data/fig8_cff/photosphere.json'
     with open(data_file_photosphere) as json_file:
         photosphere = json.load(json_file)
@@ -196,65 +162,26 @@ def plot_atmosphere( output_dir, sub_dirs ):
         print("No seaborn.")
 
     # # Legend(s)
-    legend_ax0 = ax0.legend(handles=legend_ax0_handles, loc=1, ncol=1, fontsize=fs_legend, framealpha=0.99, title=r"Volatile: $z$, $p$ weighted by $\mathcal{CF}_\mathrm{F}$") # , time $t$"
+    legend_ax0 = ax0.legend(handles=legend_ax0_handles, loc=1, ncol=1, fontsize=fs_legend, framealpha=0.99, title=r"Volatile: $z$, $p$ weighted by $\mathcal{CF}_\mathrm{F}$")
     ax0.add_artist(legend_ax0)
-    
-    # # Detailed legend
-    # legend_ax1 = ax1.legend(handles=legend_ax1_handles, loc=[0.47, 0.1], ncol=2, fontsize=fs_legend, framealpha=0.3, title=r"Volatile species, wavelength $\lambda_\mathrm{c}$" )
-    # ax1.add_artist(legend_ax1)
 
     # Only wavelengths legend
     legend_dummy = ax1.legend(handles=legend_ax1_dummy_handles, loc=1, ncol=1, fontsize=fs_legend, framealpha=0.3, title=r"Wavelength $\lambda$" )
     ax1.add_artist(legend_dummy)
-
-    # ax2.text(0.6, 0.28, 'Mush', color=qmagenta_light, rotation=0, ha="left", va="top", fontsize=fs_label, transform=ax2.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
-    # ax2b.text(0.6, 0.28, 'Mush', color=qmagenta_light, rotation=0, ha="left", va="top", fontsize=fs_label, transform=ax2b.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
-    
+   
     ax0.text(0.98, 0.015, 'A', color="k", rotation=0, ha="right", va="bottom", fontsize=fs_label+4, transform=ax0.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
     ax1.text(0.98, 0.015, 'B', color="k", rotation=0, ha="right", va="bottom", fontsize=fs_label+4, transform=ax1.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
 
     ax0.text(0.995, 0.31, r'$\mathcal{CF}_\mathrm{F}$–weighted'+'\n'+'photosphere', color="k", rotation=0, ha="right", va="bottom", fontsize=fs_legend, transform=ax0.transAxes, bbox=dict(fc='white', ec="white", alpha=0.01, pad=0.1, boxstyle='round'))
 
-    # ax1.invert_xaxis()
-    # ax1.yaxis.tick_right()
-    # sns.despine(left=True, right=False)
-
-    # ax0.legend( fancybox=True, framealpha=0.5, ncol=1, fontsize=fs_legend)
-    # ax2.legend( fontsize=8, fancybox=True, framealpha=0.5 )
     plt.savefig('../figures/fig_8.pdf', tight_layout=True)
 
-    # fig_o.savefig(1)
     plt.close()
 
 #====================================================================
 def main():
 
-    # Optional command line arguments for running from the terminal
-    # Usage: $ python plot_atmosphere.py -t 0,718259
-    parser = argparse.ArgumentParser(description='COUPLER plotting script')
-    parser.add_argument('-odir', '--output_dir', type=str, help='Full path to output directory');
-    parser.add_argument('-t', '--times', type=str, help='Comma-separated (no spaces) list of times');
-    args = parser.parse_args()
-
-    # Define output directory for plots
-    if args.output_dir:
-        output_dir = args.output_dir
-        print("Output directory:", output_dir)
-        
-    else:
-        output_dir = os.getcwd()
-        print("Output directory:", output_dir)
-
-    # # Define which times are plotted
-    # if args.times:
-    #     data_times = [ int(time) for time in args.times.split(',') ]
-    #     print("Snapshots:", output_times)
-    # else:
-    #     data_times = su.get_all_output_times(output_dir)
-    #     print("Snapshots:", output_times)
-
     vols    = [ "H2", "H2O", "CO2", "CH4", "O2", "N2", "CO" ]
-    # vols    = [ "CH4" ]
 
     output_dir  = "../data/int_atm/coupler_runs/"
     
@@ -266,11 +193,5 @@ def main():
 #====================================================================
 
 if __name__ == "__main__":
-
-    # Import utils- and plot-specific modules
-    from modules_utils import *
     from modules_plot import *
-    import utils_coupler as cu
-    import utils_spider as su
-
     main()

@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-
-# Import utils- and plot-specific modules
 from modules_plot import *
 
 #====================================================================
@@ -27,7 +25,7 @@ def plot_global( host_dir, sub_dirs ):
     label_fs   = 11
     zorder_txt = 100
 
-    fig_o = su.FigureData( 3, 2, width, height, '../figures/fig_5', units='yr' )
+    fig_o = FigureData( 3, 2, width, height, '../figures/fig_5', units='yr' )
     fig_o.fig.subplots_adjust(wspace=0.05,hspace=0.1)
 
     ax0 = fig_o.ax[0][0]
@@ -62,7 +60,7 @@ def plot_global( host_dir, sub_dirs ):
         output_dir = host_dir+sub_dir
         print(output_dir)
 
-        fig_o.time = su.get_all_output_times(output_dir)
+        fig_o.time = get_all_output_times(output_dir)
 
         print("---------------------------------------------------------------")
         print(sub_dir, "times:", len(fig_o.time), ",", np.min(fig_o.time)/1e+6, "–", np.max(fig_o.time)/1e+6, "Myr")
@@ -75,7 +73,6 @@ def plot_global( host_dir, sub_dirs ):
         
         # Remove duplicate atm entries for one timestep
         for idx, row in df_atm.iterrows():
-            # print(row["Time"])
             if len(df_atm.loc[df_atm["Time"] == int(row["Time"])]) > 1:
                 df_atm = df_atm.drop(idx)
 
@@ -92,7 +89,7 @@ def plot_global( host_dir, sub_dirs ):
                    ('rheological_front_dynamic','depth'),
                    ('rheological_front_dynamic','mesh_index')
                    )
-        data_a = su.get_dict_surface_values_for_times( keys_t, fig_o.time, output_dir )
+        data_a = get_dict_surface_values_for_times( keys_t, fig_o.time, output_dir )
         mass_liquid         = data_a[0,:]
         mass_solid          = data_a[1,:]
         mass_mantle         = data_a[2,:]
@@ -124,7 +121,7 @@ def plot_global( host_dir, sub_dirs ):
         for idx, val in enumerate(T_surf):
             # print(idx, val)
             if np.isnan(val):
-                json_file_time = su.MyJSON( output_dir+'/{}.json'.format(fig_o.time[idx]) )
+                json_file_time = MyJSON( output_dir+'/{}.json'.format(fig_o.time[idx]) )
                 int_tmp   = json_file_time.get_dict_values(['data','temp_b'])
                 # print("T_surf:", idx, val, "-->", round(int_tmp[0],3), "K")
                 T_surf[idx] = int_tmp[0]
@@ -134,18 +131,11 @@ def plot_global( host_dir, sub_dirs ):
         ##########
         title = r'Heat flux to space'  
         if nsteps > 1:
-            
-            # Fatm_rolling = np.convolve(Fatm, np.ones((nsteps,))/nsteps, mode='valid')
-            # Time_rolling = np.convolve(fig_o.time, np.ones((nsteps,))/nsteps, mode='valid')
-            # ax0.loglog( Time_rolling, Fatm_rolling, color=vol_colors[sub_dir][color_strength], lw=lw, label=vol_latex[sub_dir] )
 
             Fatm_atm_rolling = np.convolve(df_atm["F_atm"], np.ones((nsteps,))/nsteps, mode='valid')
             Time_atm_rolling = np.convolve(df_atm["Time"], np.ones((nsteps,))/nsteps, mode='valid')
             ax0.loglog( Time_atm_rolling, Fatm_atm_rolling, color=vol_colors[sub_dir][color_strength], lw=lw, ls=ls, label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir] )
-
         else:
-            # ax0.loglog( fig_o.time, Fatm, color=vol_colors[sub_dir][color_strength], lw=lw, alpha=1.0, label=vol_latex[sub_dir] )
-            # ax0.plot( df_int["Time"], df_int["F_int"], qred, lw=lw, alpha=1.0 )
             ax0.loglog( df_atm["Time"], df_atm["F_atm"], color=vol_colors[sub_dir][color_strength], lw=lw, ls=ls, alpha=1.0, label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir] )
             
         # fig_o.set_myaxes(ax0)
@@ -155,15 +145,10 @@ def plot_global( host_dir, sub_dirs ):
         ax0.set_xlim( *xlim )
         ax0.set_xticklabels([])
         ax0.yaxis.set_label_coords(xcoord_l,ycoord_l)
-        # handles, labels = ax0.get_legend_handles_labels()
-        # ax0.legend(handles, labels, loc='upper right', fontsize=fs_legend, ncol=2)
         ax0.set_title(title, fontname=title_font, fontsize=title_fs, x=title_x, y=title_y, ha=title_ha, va=title_va, bbox=dict(fc='white', ec="white", alpha=txt_alpha, pad=txt_pad), zorder=zorder_txt)
         ax0.set_ylim(8e-1, 1e+7)
-        # ax0.set_yscale("symlog", linthreshy=1e-2)
-        # ax0.set_ylim(top=1e+7)
         yticks = [ 1e+0, 1e+1, 1e+2, 1e+3, 1e+4, 1e+5, 1e+6, 1e+7 ]
         ax0.set_yticks( yticks )
-        # ax0.set_yticklabels( [ str(int(i)) for i in yticks ] )
 
         # # # SHOW LEGEND
         ax0.legend(ncol=2, loc=1, frameon=1, fancybox=True, framealpha=0.9, fontsize=fs_legend)
@@ -173,19 +158,15 @@ def plot_global( host_dir, sub_dirs ):
         ##########
         # T_surf = T_surf[np.logical_not(np.isnan(T_surf))]
         title = r'Surface temperature'
-        # h1, = ax1.semilogx( fig_o.time, T_surf, ls="-", lw=lw, color=vol_colors[sub_dir][color_strength], label=r'Surface temp, $T_s$' )
-        # fig_o.set_myaxes( ax1, title=title, yticks=yticks)
         if nsteps > 1:
             Time_int_rolling = np.convolve(df_int["Time"], np.ones((nsteps,))/nsteps, mode='valid')
             Ts_int_rolling = np.convolve(df_int["T_surf"], np.ones((nsteps,))/nsteps, mode='valid')
             Time_atm_rolling = np.convolve(df_atm["Time"], np.ones((nsteps,))/nsteps, mode='valid')
             Ts_atm_rolling = np.convolve(df_atm["T_surf"], np.ones((nsteps,))/nsteps, mode='valid')
-            
-            # h2, = ax1.plot(Time_int_rolling, Ts_int_rolling, color=qred, label="Interior")
-            h1, = ax1.semilogx(Time_atm_rolling, Ts_atm_rolling, ls=ls, lw=lw, color=vol_colors[sub_dir][color_strength], label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir]) # , color="blue"
+
+            h1, = ax1.semilogx(Time_atm_rolling, Ts_atm_rolling, ls=ls, lw=lw, color=vol_colors[sub_dir][color_strength], label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir])
         else:
-            # h2, = ax1.plot(df_int["Time"], df_int["T_surf"], color=qred, label="Interior")
-            h1, = ax1.semilogx(df_atm["Time"], df_atm["T_surf"], ls=ls, lw=lw, color=vol_colors[sub_dir][color_strength], label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir]) # , color="blue"
+            h1, = ax1.semilogx(df_atm["Time"], df_atm["T_surf"], ls=ls, lw=lw, color=vol_colors[sub_dir][color_strength], label=vol_latex[sub_dir], zorder=vol_zorder[sub_dir])
 
         ax1.set_ylabel(r'$T_\mathrm{surf}$ (K)', fontsize=label_fs)
         ax1.xaxis.set_major_locator(ticker.LogLocator(base=10.0, numticks=20) )
@@ -205,14 +186,12 @@ def plot_global( host_dir, sub_dirs ):
         ##########
 
         # Rheological front
-        # ax2.semilogx( fig_o.time, 1-rheol_front/np.max(rheol_front), ls=":", lw=lw, color=vol_colors[sub_dir][color_strength], zorder=1, alpha=0.5)
         RF_depth_crit = 0.01 # normalized
         RF_depth_crit_num, RF_depth_crit_idx = find_nearest(rheol_front/np.max(rheol_front), RF_depth_crit)
         RF_depth_crit_time   = fig_o.time[RF_depth_crit_idx]
         Phi_global_intersect = phi_global[RF_depth_crit_idx]
-        # print("RF:", RF_depth_crit_idx, RF_depth_crit_num, RF_depth_crit_time, Phi_global_intersect)
 
-        ax2.arrow(RF_depth_crit_time, 0, 0, Phi_global_intersect, head_width=0, head_length=0, fc=vol_colors[sub_dir][color_strength], ec=vol_colors[sub_dir][color_strength], lw=1.2, alpha=0.5, ls=":") # , transform=ax0.transAxes
+        ax2.arrow(RF_depth_crit_time, 0, 0, Phi_global_intersect, head_width=0, head_length=0, fc=vol_colors[sub_dir][color_strength], ec=vol_colors[sub_dir][color_strength], lw=1.2, alpha=0.5, ls=":")
 
         if sub_dir == sub_dirs[0]:
             legend_handles_ax2 = []
@@ -225,16 +204,12 @@ def plot_global( host_dir, sub_dirs ):
         # Mante melt + solid fraction
         ax2.semilogx( fig_o.time, phi_global, color=vol_colors[sub_dir][color_strength], ls=ls, lw=lw, label=r'Melt, $\phi_{\mathrm{mantle}}$', zorder=vol_zorder[sub_dir])
 
-        # ax2.semilogx( fig_o.time, mass_solid/(mass_liquid+mass_solid), color=qgray_dark, linestyle='--', lw=lw, label=r'Solid, $1-\phi_{\mathrm{mantle}}$')
-
         ax2.set_xlim( *xlim )
         ax2.set_ylim( bottom=0, top=1.01 )
         ax2.set_xlabel(xlabel, fontsize=label_fs)
         ax2.set_ylabel(r'$\phi_{\mathrm{mantle}}$ (wt)', fontsize=label_fs)
         ax2.yaxis.set_label_coords(xcoord_l,ycoord_l)
         handles, labels = ax2.get_legend_handles_labels()
-        # ax2.legend(handles, labels, ncol=1, loc=6, frameon=1, fancybox=True, framealpha=0.9, fontsize=fs_legend-1)
-
         ax2.xaxis.set_major_locator(ticker.LogLocator(base=10.0, numticks=20) )
         ax2.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=(0.2,0.4,0.6,0.8), numticks=20))
 
@@ -242,19 +217,8 @@ def plot_global( host_dir, sub_dirs ):
         ax2.set_title(title, fontname=title_font, fontsize=title_fs, x=title_x, y=title_y, ha=title_ha, va=title_va, bbox=dict(fc='white', ec="white", alpha=txt_alpha, pad=txt_pad), zorder=zorder_txt)
 
         ### Plot axes setup
-        ##########
-        # figure d
-        ##########
         title_ax3 = r'Surface volatile pressure equivalent'
-        # Total pressure
-        # ax3.semilogx( fig_o.time, P_surf, color=qgray_dark, linestyle='-', lw=lw, label=r'Total')
-        ##########
-        # figure e
-        ##########
         title_ax4 = r'Atmosphere volatile mass fraction'
-        ##########
-        # figure f
-        ##########
         title_ax5 = r'Interior volatile mass fraction'
 
         ########## Volatile species-specific plots
@@ -263,9 +227,6 @@ def plot_global( host_dir, sub_dirs ):
         for vol in volatile_species:
 
             vol_times   = []
-            # M_atm_total = np.zeros(len(fig_o.time))
-
-            # print(vol+":", end = " ")
 
             print(vol, end = " ")
 
@@ -279,31 +240,22 @@ def plot_global( host_dir, sub_dirs ):
                 vol_str = '"'+vol+'"'
 
                 # # Find the times with the volatile in the JSON file
-                # # https://stackoverflow.com/questions/4940032/how-to-search-for-a-string-in-text-files
                 with open(json_file, 'rb', 0) as file, \
                     mmap.mmap(file.fileno(), 0, access=mmap.ACCESS_READ) as s:
-                    # if s.find(vol.encode()) != -1:
                     if s.find(vol_str.encode()) != -1:
-                        # print(sim_time, end=" ")
                         keys_t = ( ('atmosphere', vol, 'liquid_kg'),
                                    ('atmosphere', vol, 'solid_kg'),
                                    ('atmosphere', vol, 'initial_kg'),
                                    ('atmosphere', vol, 'atmosphere_kg'),
                                    ('atmosphere', vol, 'atmosphere_bar')
                                    )
-
                         vol_times.append(sim_time)
-
-            # print()
-
-            # # Find the times the volatile is *not* present
-            # np.setdiff1d(fig_o.time,vol_times)
 
             # Only for volatiles that are present at some point 
             if vol_times:
 
                 # Get the data for these files
-                data_vol = su.get_dict_surface_values_for_times( keys_t, vol_times, output_dir )
+                data_vol = get_dict_surface_values_for_times( keys_t, vol_times, output_dir )
                 vol_liquid_kg       = data_vol[0,:]
                 vol_solid_kg        = data_vol[1,:]
                 vol_initial_kg      = data_vol[2,:]
@@ -335,20 +287,11 @@ def plot_global( host_dir, sub_dirs ):
         ax3.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=(0.2,0.4,0.6,0.8), numticks=20))
         ax3.xaxis.set_minor_formatter(ticker.NullFormatter())
         ax3.set_xlim( *xlim )
-        # ax3.set_ylim( bottom=0 )
-        # https://brohrer.github.io/matplotlib_ticks.html#tick_style
-        # ax3.tick_params(axis="x", direction="in", length=3, width=1)
-        # ax3.tick_params(axis="y", direction="in", length=10, width=1)
         ax3.set_xticklabels([])
         ax3.yaxis.tick_right()
-        # ax3.set_yscale("log")
         ax3.yaxis.set_label_position("right")
         ax3.yaxis.set_label_coords(xcoord_r,ycoord_r)
         handles, labels = ax3.get_legend_handles_labels()
-        # ax3.set_yscale("symlog", linthreshy=1e1)
-        # ax3.set_ylim(top=280)
-        # ax3.legend(handles, labels, ncol=2, loc=2, frameon=1, fancybox=True, framealpha=0.9, fontsize=fs_legend) # , loc='center left'
-        # ax3.legend(ncol=2, loc=6, frameon=1, fancybox=True, framealpha=0.9, fontsize=fs_legend)
         ax3.set_title(title_ax3, fontname=title_font, fontsize=title_fs, x=title_x, y=title_y, ha=title_ha, va=title_va, bbox=dict(fc='white', ec="white", alpha=txt_alpha, pad=txt_pad), zorder=zorder_txt)
 
         fig_o.set_myaxes( ax4)
@@ -373,14 +316,11 @@ def plot_global( host_dir, sub_dirs ):
         ax5.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs=(0.2,0.4,0.6,0.8), numticks=20))
         ax5.xaxis.set_minor_formatter(ticker.NullFormatter())
         ax5.set_xlim( *xlim )
-        # ax5.set_ylim( 0, 1 )
         ax5.yaxis.tick_right()
         ax5.yaxis.set_label_coords(xcoord_r,ycoord_r)
         ax5.yaxis.set_label_position("right")
         handles, labels = ax5.get_legend_handles_labels()
         ax5.set_xlabel(xlabel, fontsize=label_fs)
-        # ax5.set_yscale("symlog", linthreshy=1e-1)
-        # ax5.set_ylim(top=1.01)
         ax5.set_ylabel(r'$X_{\mathrm{mantle}}^{\mathrm{i}}/X_{\mathrm{tot}}^{\mathrm{i}}$', fontsize=label_fs)
         ax5.set_title(title_ax5, fontname=title_font, fontsize=title_fs, x=title_x, y=title_y, ha=title_ha, va=title_va, bbox=dict(fc='white', ec="white", alpha=txt_alpha, pad=txt_pad), zorder=zorder_txt)
 
@@ -390,18 +330,6 @@ def plot_global( host_dir, sub_dirs ):
 
 #====================================================================
 def main():
-
-    # Optional command line arguments for running from the terminal
-    # Usage: $ python plot_atmosphere.py -t 0,718259
-    parser = argparse.ArgumentParser(description='COUPLER plotting script')
-    parser.add_argument('-odir', '--output_dir', type=str, help='Full path to output directory');
-    args = parser.parse_args()
-
-    # Define output directory for plots
-    if args.output_dir:
-        output_dir = args.output_dir
-    else:
-        output_dir = os.getcwd()
 
     # Define specific one
     output_dir  = "../data/int_atm/coupler_runs/"
