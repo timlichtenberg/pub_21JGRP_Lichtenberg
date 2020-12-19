@@ -265,7 +265,7 @@ for setting in [ "trpp" ]:
     legendA2 = ax1.legend(handles=legendA2_handles, loc=4, ncol=1, fontsize=legend_fs, title="Fixed orbit")
 
     ax1.set_xlabel(r'Surface temperature, $T_\mathrm{surf}$ (K)', fontsize=label_fs)
-    ax1.set_ylabel(r'Outgoing longwave radiation, $F^{\uparrow}_\mathrm{LW}$ (W m$^{-2}$)', fontsize=label_fs)
+    ax1.set_ylabel(r'Outgoing thermal radiation, $F^{\uparrow}_\mathrm{th}$ (W m$^{-2}$)', fontsize=label_fs)
     ax1.set_yscale("log")
     ax1.set_xlim(left=np.min(tmp_range), right=np.max(tmp_range))
     ax1.set_ylim(top=a_ymax*10)

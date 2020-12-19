@@ -1,5 +1,6 @@
 ## Repo-specific files/folders
 data/int_atm/*
+int_atm.zip
 
 ## Python-relevant files
 # Byte-compiled / optimized / DLL files
