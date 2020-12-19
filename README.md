@@ -7,6 +7,8 @@ For questions, help and notifications surrounding this repository please contact
 
 When you make use of material from this repository, please acknowledge:
 
+[![DOI](https://zenodo.org/badge/321733308.svg)](https://zenodo.org/badge/latestdoi/321733308)
+
 > Lichtenberg, T., Bower, D. J., Hammond, M., Boukrouche, R., Sanan, P., Tsai, S.-M., Pierrehumbert R. T. (2021) Vertically resolved magma ocean–protoatmosphere evolution: H2, H2O, CO2, CH4, CO, O2, and N2 as primary absorbers. Journal of Geophysical Research: Planets.
 
 # Repository structure
