@@ -1,4 +1,4 @@
-# Plotting scripts + simulation data (Lichtenberg et al., 2021, JGRP)
+# Plotting scripts and data for Lichtenberg et al. (2021, JGRP)
 
 This repository is part of the combined data + script container at https://osf.io/m4jh7. 
 For questions, help and notifications surrounding this repository please contact [Tim Lichtenberg](https://timlichtenberg.net/).
